@@ -9,7 +9,7 @@
 > [skipper-64](skipper-64)
 
 # Solution
-Initially I ran ltrace against the binary to get a feel for the control-flow of the program.
+Initially, I ran `ltrace` against the binary to get a feel for the control-flow of the program.
 ```
 $ ltrace ./skipper-32 
 ....
@@ -22,11 +22,12 @@ printf("Sorry, your computer's name - %s"..., "kali"Sorry, your computer's name 
 raise(9, 0xffbf5b2c, 68, 4 <no return ...>
 +++ killed by SIGKILL +++
 ```
-Disassembling the main function in radare2 shows that the program runs three checks on the computer to determine name, OS version and CPU type. 
+
+Disassembling the main function in [radare2](http://www.radare.org/r/) shows that the program runs three checks on the computer to determine name, OS version and CPU type. 
 ![main](https://github.com/R3dCr3sc3nt/BSidesSF-2017/blob/master/reversing/Skipper/main.png)
 
-Just after the strcmp calls there is a JE that executes if the result of `test eax, eax` is 0. The jump bypasses the error message if the strcmp results in 0 (the strings are equal). 
+Just after the strcmp calls, there is a JE (jump if equal) that executes if the result of `test eax, eax` is 0. The jump bypasses the error message if the strcmp results in 0 (the strings are equal). 
 ![jump](https://github.com/R3dCr3sc3nt/BSidesSF-2017/blob/master/reversing/Skipper/jump.png)
 
-Using breakpoints in the debug mode of radare2 makes it possible to edit the eax register before each JE call. The flag is displayed once all three jumps are taken succesfully.
+Using breakpoints in the debug mode of radare2 makes it possible to edit the `eax` register before each JE call. The flag is displayed once all three jumps are taken succesfully.
 ![debug](https://github.com/R3dCr3sc3nt/BSidesSF-2017/blob/master/reversing/Skipper/debug.png)
