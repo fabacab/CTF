@@ -8,7 +8,7 @@
 
 ## Solution
 
-In this challenge, we are presented with a packet capture file. Packet captures are records of network activity. The industry standard tool for examining network activity in real-time and forensically is [Wireshark](https://www.wireshark.org/), so the first thing I did is open the file with that tool. Wireshark displayed the recorded network activity by showing each individual packet:
+In this challenge, we are presented with a [packet capture (`.pcap`) file](https://en.wikipedia.org/wiki/Pcap). Packet captures are records of network activity. The industry standard tool for examining network activity in real-time and forensically is [Wireshark](https://www.wireshark.org/), so the first thing I did is open the file with that tool. Wireshark displayed the recorded network activity by showing each individual packet:
 
 ![Screenshot of Wireshark interface displaying the "easycap.pcap" file contents.](screenshots/wireshark-easycap.png)
 
