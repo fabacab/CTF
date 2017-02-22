@@ -161,7 +161,7 @@ The clue to the third flag is clearly visible in the Flask application's source 
    flag3 = requests.get('http://vault:8080/flag').text
 ```
 
-As before, we need some programming experience to understand what's happening here. A new variable, called `flag3`, is being initialized. It's a safe bet that the result of the program code that sets this variable is going to give us the third flag. The program code setting this variable is `requests.get('http://vault:8080/flag').text`, so we need to figure out what `requests` is, what its `get` method does, and what its `text` property means (although these are all pretty semantically meaningful).
+As before, we need some programming experience to understand what's happening here. A new variable, called `flag3`, is being initialized. It's a safe bet that the result of the program code that sets this variable is going to give us the third flag. The program code setting this variable is `requests.get('http://vault:8080/flag').text`, so we need to figure out what `requests` is, what its `get()` method does, and what its `text` property means (although these are all pretty semantically meaningful).
 
 At the very top of the `server.py` script is this line:
 
@@ -169,20 +169,20 @@ At the very top of the `server.py` script is this line:
 import requests
 ```
 
-So [`requests` is a Python library ("module")](http://python-requests.org/), a popular one used for [making HTTP requests and receiving responses](http://www.pythonforbeginners.com/requests/using-requests-in-python). (This is instantly discoverable with a simple Internet search for `python requests` or similar keywords.) Using its `get()` method is simply a programmtic way of loading a page, just like you might do in a Web browser. Its `text` property is simply a text-only representation of the response body.
+So [`requests` is a Python library ("module")](http://python-requests.org/), a popular one used for [making HTTP requests and receiving responses](http://www.pythonforbeginners.com/requests/using-requests-in-python). (This is instantly discoverable with a simple Internet search for `python requests` or similar keywords.) Using its [`get()`](http://docs.python-requests.org/en/master/api/#requests.get) method is simply a programmtic way of loading a page, just like you might do in a Web browser. Its [`text`](http://docs.python-requests.org/en/master/api/#requests.Response.text) property is simply a text-only representation of the response body.
 
-Knowing that, it becomes clear that the third flag is to be found on yet another Web server, the called `vault`. The challenging part is that we don't know what `vault` is. All we know is that the target webserver serving us the Zumbo website knows what `vault` and that when *it* loads the page at `http://vault:8080/flag`, it receives the flag.
+Knowing that, it becomes clear that the third flag is to be found on yet another Web server named `vault`. The challenging part is that we don't know where "`vault`" is. All we know is that the Zumbo website knows where `vault` is and that when *it* loads the page at `http://vault:8080/flag`, it receives the flag.
 
-> :sweat_drops: During the CTF, my first instinct was to leverage the path traversal attack to try reading a file that would contain information about what the server thought the `vault` name referenced. Following that logic, I asked for [the `/etc/hosts` file](http://zumbo-8ac445b1.ctf.bsidessf.net/%2e%2e%2fetc%2fhosts). My hope was that the name `vault` was bound to a publicly-accessible IP address or other name as per the [standard file-based Linux name lookup mechanism for this file described in `hosts(5)`](https://linux.die.net/man/5/hosts). This [proved a dead-end](loot/http_zumbo-8ac445b1.ctf.bsidessf.net_%252e%252e%252fetc%252fhosts.html), however.
+> :book: During the CTF, my first instinct was to leverage the path traversal attack used in the prior part of the challenge to try reading a file that would contain information about what the Zumbo server thought the `vault` name referenced. Following that logic, I asked for [the `/etc/hosts` file](http://zumbo-8ac445b1.ctf.bsidessf.net/%2e%2e%2fetc%2fhosts). My hope was that the name `vault` was bound to a publicly-accessible IP address or domain name as per the standard file-based Linux name lookup mechanism for this file ([described in `hosts(5)`](https://linux.die.net/man/5/hosts)). Unfortunately, this [proved to be a dead-end](loot/http_zumbo-8ac445b1.ctf.bsidessf.net_%252e%252e%252fetc%252fhosts.html).
 > 
-> Unconvinced that I had exhausted the utility of the directory traversal attack vector, I tried accessing log files that I thought might contain information about a system called `vault`. This included the `/var/log/wtmp` and `/var/log/btmp` log files, which ordinarily contain information about users who authenticate to the system (i.e., users who log in). My hope was to be able to download this file and then use [`last -d -f downloaded-wtmp-file | grep vault`](http://explainshell.com/explain?cmd=last+-d+-f+downloaded-wtmp-file+%7C+grep+vault) to see if I could find an IP address associated with the "`vault`" name. Unfortunately, these were either not present or not readable.
+> Still unconvinced that I had exhausted the utility of the path traversal attack vector, I tried accessing various log files that I thought might contain information about network addresses, hoping to find a reference to a system called `vault` in them. This included the `/var/log/wtmp` and `/var/log/btmp` log files (see [`wtmp(5)`](https://linux.die.net/man/5/wtmp)). These ordinarily contain information about users who authenticate to the system (i.e., users who try to log in). My hope was to be able to download this file and then use a command such as [`last -d -f downloaded-wtmp-file | grep vault`](http://explainshell.com/explain?cmd=last+-d+-f+downloaded-wtmp-file+%7C+grep+vault) to see if I could find an IP address associated with the "`vault`" name. Unfortunately, these logs were either not present, or not readable by the Flask application.
 
 At this point, there are two possible avenues of accessing the third flag:
 
 * somehow read the variable `flag3` directly, or
 * somehow execute our own request in the context of the server.
 
-The first option would require a code path in the same Python block as the variable. That block again looks like this:
+The first option would require making use of a code path in the same Python block as the variable. That block again looks like this:
 
 ```py
 if __name__ == '__main__':
@@ -196,9 +196,9 @@ if __name__ == '__main__':
     app.run(host="0.0.0.0")
 ```
 
-It's apparent that there are no opportunities to insert our own code after the line with `flag3` here since there are no places where this code block uses any user-supplied input. Therefore, our only remaining option is to see if we can execute code on the remote server, i.e., if we can find a [remote code execution (RCE)](https://en.wikipedia.org/wiki/Arbitrary_code_execution) vulnerability. To do this, we need to again re-examine the source code, this time looking for any and all places where we can supply input to the program to influence its behavior during execution.
+It's apparent that there are no opportunities to insert our own code after the line with `flag3` here since there are no places where this code block uses any user-supplied input. Therefore, we must explore our remaining option and see if we can execute arbitrary code on the remote server. That is, find a [remote code execution (RCE)](https://en.wikipedia.org/wiki/Arbitrary_code_execution) vulnerability. To do this, we need to again re-examine the source code, this time looking for any and all places where we can supply input to the program to influence its behavior as it runs.
 
-This program is relatively small. The only place where user-supplied input is accepted is the URL. The relevant code block is this one:
+Thankfully, this program is relatively small. The only place where user-supplied input is accepted is the URL. The relevant code block is this one:
 
 ```py
 @app.route('/<path:page>')
@@ -214,26 +214,36 @@ def custom_page(page):
     return flask.render_template_string(template, name='test', counter=counter);
 ```
 
-In this code, the value of the URL becomes the value of the `page` variable, so let's manually trace what this code does with `page`.
+In this code, the value of the URL first becomes the value of the `page` variable. Let's manually trace what this code does with the `page` variable:
 
-1. First, `page` is checked against the value `'favicon.ico'`. If it is equal to that string (i.e., if the URL we entered was `http://zumbo-8ac445b1.ctf.bsidessf.net/favicon.ico`), then we would `return` from the function, terminating execution. That's a dead-end for us. Let's move on.
-1. The next line that uses the `page` variable is inside the `try` block. In this case, we `open()` a file given by the URL, `read()` its contents, and assign the contents of the file to the `template` variable. Let's follow this code path more closely:
-    1. The next line where `template` is used in this code path is the second to last one, where the now-familiar HTML comment is being appended to a new line: `template += "\n<!-- page: %s, src: %s -->\n" % (page, __file__)`. (This line also makes use of the `page` variable, revealing [an XSS attack](https://en.wikipedia.org/wiki/Cross-site_scripting), but this is unhelpful to us because XSS attacks are executing on the client, in our Web browser, and we are trying to achieve *remote* code execution, on the server.) Moving on…
-    1. …the last line in the function uses `template` again, this time passing it to [Flask's `render_template_string()` method](http://flask.pocoo.org/docs/0.12/api/#flask.render_template_string). This tells us that if we can control the contents of the `template` variable, we can get Flask to render whatever we want. This is useful because Flask's renderer is a templating language called [Jinja](http://jinja.pocoo.org/), and [one of the features of Jinja templates is the ability to execute at least some Python code](http://jinja.pocoo.org/docs/2.9/templates/#list-of-global-functions). Unfortunately, in this code execution path we have no control over the contents of `template`, because its contents were read from a file on disk in step 2, so this is another dead-end.
+1. First, `page` is checked against the literal value `'favicon.ico'`. If the variable is equal to that string (i.e., if the URL we entered was `http://zumbo-8ac445b1.ctf.bsidessf.net/favicon.ico`), then we would `return` from the function, terminating execution. That's a dead-end for us. Let's move on.
+1. The next line that uses the `page` variable is inside the `try` block. In this case, the program will `open()` a file whose name is given by the URL, `read()` that file's contents, and assign the contents of that file to the `template` variable. This means we now have two variables to consider: `page` and `template`. Let's follow this code path more closely:
+    1. The next line where `template` is used in this code path is the second to last one, where the now-familiar HTML comment is being appended to a new line: `template += "\n<!-- page: %s, src: %s -->\n" % (page, __file__)`.  
 
-Back in step 2, the `page` variable instructs the code which file to try to `open()`. This is nested inside a `try` block to make sure that if the `open()` call fails for some reason, the program can handle the error. Since the `page` variable is controlled by *us* (it is user-supplied input), we can force the `open()` call to fail by supplying a URL of a file that we know does not exist. We've already encountered URLs like this in the very first part of the challenge, when we were greeted with a message like "No such file or directory."
+      > :bulb: Careful readers will notice that this line also makes use of the `page` variable. The raw, unfiltered contents of `page` are inserted directly into an HTML comment, resulting in an [XSS attack](https://en.wikipedia.org/wiki/Cross-site_scripting). While potentially useful for other reasons, this does not help us pursue the third flag because XSS attacks are executed *locally*, in the client's Web browser, and we are trying to achieve *remote* code execution, in the server itself.  
 
-Let's now explore that code path, and see what happens when we send a URL to a non-existent path. Let's try using `blahblahblah` as the `page` variable (by loading the address `http://zumbo-8ac445b1.ctf.bsidessf.net/blahlbahlbah`).
+      Moving on…
 
-1. Once again, we supply a URL. This becomes the `page` variable in the code.
-1. We know that we must *not* supply a URL of `favicon.ico`, because if we did the first line of the program would `return`, and execution would end. Since `blahblahlblah` does not equal `favicon.ico`, we continue executing.
+    1. …the last line in the function uses `template` again, this time passing it to [Flask's `render_template_string()` method](http://flask.pocoo.org/docs/0.12/api/#flask.render_template_string). This means that if we can control the contents of the `template` variable, we can feed Flask whatever templating code we want. This is useful because Flask's templating engine is called [Jinja](http://jinja.pocoo.org/), and [one of the features of Jinja templates is the ability to execute at least some Python code](http://jinja.pocoo.org/docs/2.9/templates/#list-of-global-functions). Unfortunately, in this code execution path we have no control over the contents of `template` because its contents were read from a file on disk in step 2, making this another dead-end.
+
+Since the above code path does not lead to remote code execution, we next have to explore an alternate code path.
+
+Back in step 2, the `page` variable instructs the code which file to `try` to `open()`. The purpose of nesting this inside a `try` block is to make sure that if the `open()` call fails, the program can handle the error. Since the `page` variable is controlled by *us* (i.e., it is equal to the URL we enter, so it is "user-supplied input"), we can *force* the `open()` call to fail by supplying a URL that we know will refer to a file that does not exist. We've already encountered URLs like this in the very first part of the challenge when we were greeted with a message like "No such file or directory."
+
+Let's now explore that code path, and read what the code does when we access a URL referring to a file that doesn't exist. We'll use `blahblahblah` as the `page` variable (by loading the address `http://zumbo-8ac445b1.ctf.bsidessf.net/blahlbahlbah`) just for the sake of illustration.
+
+1. Once again, the code starts by saving the contents of the URL into the `page` variable.
+1. We know that we must *not* supply a URL of `favicon.ico`, because if we did the first line of the function would `return`, and execution would end. Since `blahblahlblah` does not equal `favicon.ico`, we continue executing.
 1. Next, the code will `try` to `open()` the file called `blahblahblah`. This will *fail*, because no such file exists.
 1. At this point the code exits the `try` block and jumps to the `except` block, setting the variable `e` to the Python error (which [Python calls an "exception"](https://wiki.python.org/moin/HandlingExceptions)). The interesting variable to us is now called `e`, not `page`.
-1. The very next line uses the `e` variable by passing it through [the `str()` function](https://docs.python.org/2/library/functions.html#str). This function simply turns the error into a plain-text string. That string is then set to the `template` variable. This means if we can control the error, and we *can* control the error because the error is defined by the URL, which is something *we* provide to the program, then we can control the *template* that's rendered, like we saw earlier.
+1. The very next line uses the `e` variable by passing it through [Python's built-in `str()` function](https://docs.python.org/2/library/functions.html#str). This function simply turns the error into a plain text string. That string is then set to the `template` variable. This means if we can control the error&mdash;and we *can* control the error because the error is defined by the URL, which is something *we* provide to the program&mdash;then we can control the contents of the `template` variable.
+1. On the next line, the familiar HTML comment is appended to the `template` variable, but the variable is otherwise unchanged.
+1. Finally, the string stored in `template` (which we can control through the URL) is passed to Flask's `render_template_string()` method as before.
 
-So that's our code path. The challenge now is how to write a URL that will meet the following criteria:
+So that's our code path. By supplying a specially-crafted URL, we can write our own Jinja templating code. This attack vector is called a [server-side template injection (SSTI) attack](http://blog.portswigger.net/2015/08/server-side-template-injection.html), which may ultimately give us the RCE we need. The challenge now is how to write a URL that will meet *all* of the following criteria:
 
-* The URL must not be a file that exists, or the string `favicon.ico`.
+* The URL must not be a file that exists.
+* The URL must not be the string `favicon.ico`.
 * The URL must be interpreted by the Jinja templating engine as executable Python code.
 
 The Jinja documentation isn't quite so plainly worded about how to do this, but they do provide the information we need right near the top in [their *Synopsis* section](http://jinja.pocoo.org/docs/2.9/templates/#synopsis):
@@ -245,11 +255,54 @@ The Jinja documentation isn't quite so plainly worded about how to do this, but 
 > * {# ... #} for [Comments](http://jinja.pocoo.org/docs/2.9/templates/#comments) not included in the template output
 > * #  ... ## for [Line Statements](http://jinja.pocoo.org/docs/2.9/templates/#line-statements)
 
-Recall that our objective is to write a string that is both not a file name and is also a Python expression that will be evaluated by the Jinja template renderer. The only item in this list that matches what we need is the second, Jinja expressions. Its "expressions" are delimeted by a double brace on each side, so that means whatever our URL is, it will have to start with `{{` and end with `}}`.
+Recall that our objective is to write a string that is both not a file name and is also a Python expression that will be evaluated by the Jinja template renderer. The only item in this list that directly matches what we need is the second, Jinja expressions. The Jinja documentation describes expressions as "work[ing] very similarly to regular Python." Jinja's expressions are delimeted by a double brace on each side, meaning our URL will have to start with `{{` and end with `}}`. The percent-encoded sequence for an opening brace (`{`) is `%7B` and the percent-encoded sequence for a closing brace is `%7D`, so we'll ultimately need to craft a URL payload such as `%7B%7B<PAYLOAD-HERE>%7D%7D`, with `<PAYLOAD-HERE>` replaced with the actual Python code we want executed.
 
-Let's test our understanding of this. In Python, if we write the expression `1 + 1`, the response we should see is `2`. (You can prove this to yourself by running [`python -c 'print(1 + 1)'`](http://explainshell.com/explain?cmd=python+-c+%27print%281+%2B+1%29%27) at a command line.) In Jinja's syntax, this would be `{{ 1 + 1 }}`. So let's try [using that as the URL](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B 1 + 1 %7D%7D). Sure enough we're greeted with the correct answer:
+Let's test our understanding of this. In Python, if we write the expression `1+1+1`, the response we should see is `3`. (You can prove this to yourself by running [`python -c 'print(1+1+1)'`](http://explainshell.com/explain?cmd=python+-c+%27print%281%2B1%2B1%29%27) at a command line.) In Jinja's syntax, this would be `{{1+1+1}}`. So let's try [using that as the URL](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1+1+1%7D%7D). Sure enough, we're greeted with the correct answer:
 
 ```html
-[Errno 2] No such file or directory: u'2'
-<!-- page: 2, src: /code/server.py -->
+[Errno 2] No such file or directory: u'3'
+<!-- page: 3, src: /code/server.py -->
 ```
+
+Having discovered a server-side template injection vector, our next step is to explore the template environment. We already saw that Jinja's template engine provides a limited set of global functions, and the source code we have available reveals that we have access to the `name` and `counter` variables from the template's context (from the line `flask.render_template_string(template, name='test', counter=counter);` in the `server.py` file). We can verify this by [injecting `{{name}}` through the URL](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7Bname%7D%7D):
+
+```html
+[Errno 2] No such file or directory: u'test'
+<!-- page: test, src: /code/server.py -->
+```
+
+Of course, none of the built-in Jinja functions and neither of the developer-supplied variables present an obvious path towards remote code execution. After all, one of the primary purpsoes of templates is to restrict what code can be run in the first place. This general concept is called a "[sandbox](https://en.wikipedia.org/wiki/Sandbox_(computer_security))." In order to achieve remote code exceution, we need to find a way to get out of Jinja's sandboxed environment.
+
+This next stage of the challenge requires an intimate understanding of Python, Flask, and Jinja, but thankfully there's plenty of prior research available to anyone who can imagine some relevant Internet search keywords. Two obvious searches might be [`flask jinja template injection`](https://duckduckgo.com/?q=flask jinja template injection) and [`server-side template injection jinja`](https://duckduckgo.com/?q=server-side template injection jinja), both of which turn up a wealth of information, including a particularly useful blog post titled "[Exploring SSTI in Flask/Jinja2, Part II](https://nvisium.com/blog/2016/03/11/exploring-ssti-in-flask-jinja2-part-ii/)."
+
+> :beginner: Even if no prior research was findable by searching the Internet, however, the general methodology you would use is the same: read the documentation for the tools you're using, play with the tools yourself, explore their running environment, and so on, focusing on areas that seem particularly promising. Yes, much of this intuition comes with experience.
+> 
+> One powerful technique to learn more at this stage would be to mimic as much of the target environment as you can locally. This way, you can make use of far more powerful tools available to you, such as interactive debuggers, rather than being limited to manipulating URLs in a Web browser. This also provides an opportunity to practice administering the tools used by your target.
+> 
+> For instance, having downloaded the `server.py` source code, we can run this application ourselves on our own computer, and use [Python's standard debugger (`pdb`)](https://docs.python.org/2/library/pdb.html) to explore the target environment. Such a sequence might look like this:
+> 
+> ```sh
+> mkdir -p ~/tmp/ctf/zumbo # make a directory for exploration
+> cd ~/tmp/ctf/zumbo       # and go there.
+> curl http://zumbo-8ac445b1.ctf.bsidessf.net/server.py > server.py # Download the server.py file
+> vi server.py   # Edit the source file to remove the HTML comment (which is invalid Python, of course)
+> virtualenv ctf # Create a Python virtual environment called "ctf"
+> source ctf/bin/activate # Activate the virtual environment
+> pip install flask requests # Install the Flask and requests modules that we know the server.py code uses
+> python ./server.py # Run the server ourselves!
+> # Running the server error out, because we don't have a `/flag` file, so comment
+> # out the lines that we don't care about to get a server running.
+> # Once the server is confirmed to be running, we should be able to practice
+> # server-side template injection at http://localhost:5000/
+> # Then, once confirmed, press CTRL-C to exit the server.
+> python -m pdb ./server.py # Now run the server with the standard debugger.
+> ```
+> 
+> At this point, you can write direct Python such as `dir(flask)` to list all the Flask global objects and further explore the environment. As you can see, having a baseline of familiarity with the tools your target uses is critical for being able to meaningfully explore how you might exploit their system. If the above is unfamiliar to you, take some time to [learn about Python's `virtualenv` utilities](http://docs.python-guide.org/en/latest/dev/virtualenvs/).
+
+# Tools
+
+Now that you understand more details of URL mapping, percent-encoding, path traversal attacks, and server-side template injection attacks, consider familiarizing yourself with the following tools to make this sort of work easier in the future.
+
+* [OWASP ZAP](https://www.owasp.org/index.php/Projects/OWASP_Zed_Attack_Proxy_Project) - intercepting Web proxy that can replay, debug, and fuzz HTTP requests and responses
+* [tplmap](https://github.com/epinna/tplmap) - command-line tool that automates the detection and exploitation of Server-Side Template Injection (SSTI) vulnerabilities

@@ -17,6 +17,7 @@ This repository is structured in a manner optimized for learning from CTF writeu
         * `README.md` file containing:
             * CTF format
             * Flag format
+            * Source code for challenges, if released
             * Notes, if any
         * *Challenge category*
             * *Challenge name*
