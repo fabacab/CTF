@@ -273,7 +273,7 @@ Having discovered a server-side template injection vector, our next step is to e
 
 Of course, none of the built-in Jinja functions and neither of the developer-supplied variables present an obvious path towards remote code execution. After all, one of the primary purpsoes of templates is to restrict what code can be run in the first place. This general concept is called a "[sandbox](https://en.wikipedia.org/wiki/Sandbox_(computer_security))." In order to achieve remote code exceution, we need to find a way to get out of Jinja's sandboxed environment.
 
-This next stage of the challenge requires an intimate understanding of Python, Flask, and Jinja, but thankfully there's plenty of prior research available to anyone who can imagine some relevant Internet search keywords. Two obvious searches might be [`flask jinja template injection`](https://duckduckgo.com/?q=flask jinja template injection) and [`server-side template injection jinja`](https://duckduckgo.com/?q=server-side template injection jinja), both of which turn up a wealth of information, including a particularly useful blog post titled "[Exploring SSTI in Flask/Jinja2, Part II](https://nvisium.com/blog/2016/03/11/exploring-ssti-in-flask-jinja2-part-ii/)."
+This is the stage of the challenge requiring an intimate understanding of Python. Thankfully, even if you don't have such knowledge, there's plenty of prior research available to anyone who can imagine some relevant Internet search keywords. Two obvious searches might be [`flask jinja template injection`](https://duckduckgo.com/?q=flask jinja template injection) and [`server-side template injection jinja`](https://duckduckgo.com/?q=server-side template injection jinja), both of which turn up a wealth of information, including a particularly useful blog post titled "[Exploring SSTI in Flask/Jinja2, Part II](https://nvisium.com/blog/2016/03/11/exploring-ssti-in-flask-jinja2-part-ii/)."
 
 > :beginner: Even if no prior research was findable by searching the Internet, however, the general methodology you would use is the same: read the documentation for the tools you're using, play with the tools yourself, explore their running environment, and so on, focusing on areas that seem particularly promising. Yes, much of this intuition comes with experience.
 > 
@@ -298,7 +298,73 @@ This next stage of the challenge requires an intimate understanding of Python, F
 > python -m pdb ./server.py # Now run the server with the standard debugger.
 > ```
 > 
-> At this point, you can write direct Python such as `dir(flask)` to list all the Flask global objects and further explore the environment. As you can see, having a baseline of familiarity with the tools your target uses is critical for being able to meaningfully explore how you might exploit their system. If the above is unfamiliar to you, take some time to [learn about Python's `virtualenv` utilities](http://docs.python-guide.org/en/latest/dev/virtualenvs/).
+> At this point, you can write direct Python in the debugger such as `dir(flask)` to list all the Flask global objects and further explore the environment.
+> 
+> As you can see, having a baseline of familiarity with the tools your target uses is critical for being able to meaningfully explore how you might exploit their system. If the above is unfamiliar to you, take some time to [learn about Python's `virtualenv` utilities](http://docs.python-guide.org/en/latest/dev/virtualenvs/).
+
+Discussed in the previously linked article is an apparently magic incantation, `{{ ''.__class__.__mro__[2].__subclasses__() }}`, that reveals access to the Python execution environment outside of the Jinja template sandbox. Rather than gloss over this detail, let's take the time to at least shallowly dissect why this works.
+
+We already understand the `{{` and `}}` are Jinja expressions, so let's begin by chunking the expression itself and injecting one piece at a time. The first part is the empty string `''`. This is simply a Python string literal. [Injecting it (with a payload of `%7B%7B''%7D%7D`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''%7D%7D) returns the familiar "No such file or directory" error, but with zero content:
+
+```html
+[Errno 2] No such file or directory: u""
+<!-- page: , src: /code/server.py -->
+```
+
+A [Python string](https://docs.python.org/2/library/string.html), however, is also a [Python object](https://docs.python.org/2/library/functions.html#object) because *everything* in Python is ultimately an object of some "type." This is somewhat analogous to the way that a filesystem has a root (`/`) and every path attached to this filesystem is located at some position in this hierarchy. We can walk "up" the filesystem hierarchy with `../` and we can walk back "down" the hierarchy by naming the directories we want to access. Similarly, everything in Python—variables, objects, *everything*—somehow descends from a "root object," whose `type` is just a plain ol' `object`. If we can walk "up" the object inheritance hierarchy to the root object, then we can walk back down the hierarchy and access any loaded Python code we want.
+
+The mechanism for doing this in running code is generally termed "[reflection](https://en.wikipedia.org/wiki/Reflection_%28computer_programming%29)," but is sometimes also called "introspection." [Python has numerous code introspection capabilities](http://www.learnpython.org/en/Code_Introspection). Some are documented, such as the [`dir()`](https://docs.python.org/2/library/functions.html#dir) and [`help()` built-in functions](https://docs.python.org/2/library/functions.html#help), which each display information about what properties, methods, or documentation a given object has. Other features are not documented (yet), such as a `type` object's `__mro__` property and `__subclasses__()` method. These latter two are particularly curious because they are intentionally hidden from the output of introspection functions such as `dir()` by the Python interpreter itself.
+
+Next, let's [inject](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__%7D%7D) the next chunk of the magic incantation as well: `''.__class__`. The output is:
+
+```html
+[Errno 2] No such file or directory: u"<type 'str'>" 
+```
+
+This response (`<type 'str'>`) is the same output that we get from an interactive Python interpreter:
+
+```sh
+$ python # To launch the interpreter, just type "python" at a command line.
+Python 2.7.13 (default, Dec 23 2016, 05:05:58) 
+[GCC 4.2.1 Compatible Apple LLVM 7.0.2 (clang-700.1.81)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> ''.__class__
+>>> <type 'str'>
+```
+
+As is expected, the `__class__` property of any object is a `type` object that reports the parent object's type. (We can prove this by inspecting the `type` object's own type: `''.__class__.__class__` will return `<type 'type'>`. This is equivalent to using [Python's built-in `type()` function](https://docs.python.org/2/library/functions.html#type). That is, `type('')` will also return `<type 'str'>` and, likewise, `type('').__class__` or `type(type(''))` will return `<type 'type'>`.) All this means is that `''.__class__` provides a way to access the Python object inheritance tree through the properties and methods of the built-in `type` objects. We could just as easily have accomplished the same thing by using an integer instead of a string: [injecting `1.__class__`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1.__class__%7D%7D) will return `<type 'int'>`, which is also a `type` object:
+
+```html
+[Errno 2] No such file or directory: u'<type 'int'>' 
+```
+
+Now that we have access to a `str`-type (or `int`-type) object's internals, our next task is to traverse up the inheritance hierarchy to reach the root object. That's where the `__mro__` hidden property comes in. Accessing this property reveals the inheritance hierarchy for the given instance. When we [inject `{{''.__class__.__mro__}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__%7D%7D), we see that the empty string is descended from a `basestring` class, which itself is descended from the root `object` class:
+
+```html
+[Errno 2] No such file or directory: u"(<type 'str'>, <type 'basestring'>, <type 'object'>)" 
+```
+
+Similarly, when we introspect on an integer by [injecting `{{1.__class__.__mro__}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1.__class__.__mro__%7D%7D), we see the literal value `1` is an `int` object, which is descended from the root `object` class:
+
+```html
+[Errno 2] No such file or directory: u'(<type 'int'>, <type 'object'>)' 
+```
+
+> :bulb: The "MRO" in `__mro__` stands for Method Resolution Order. This was introduced in Python 2.3 to support Python's implementation of [multiple inheritance](https://en.wikipedia.org/wiki/Multiple_inheritance). The only reference to this in the official documentation is [a brief section discussing the difference between "new-style" versus "classic" classes](https://docs.python.org/2/reference/datamodel.html#new-style-and-classic-classes), but you can read [Python 2.3 Method Resolution Order](https://www.python.org/download/releases/2.3/mro/) to learn more.
+
+That root `object` object is what we're after. It's the third element in the `str` object's `__mro__` tuple, and the second in the `int` object's. That means either `''.__class__.__mro__[2]` or `1.__class__.__mro__[1]` will give us access it. [Injecting either the `int`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1.__class__.__mro__[1]%7D%7D) or the [`str` introspection code](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2]%7D%7D) yields the same result:
+
+```html
+[Errno 2] No such file or directory: u'<type 'object'>' 
+```
+
+The root object is most certainly outside of the Jinja template engine, meaning we have successfully escaped Jinja's sandbox. From here, we can now traverse back down the inheritance hierarchy using the root object's `type` object's `__subclasses__()` special method. Like the `__mro__` property, this special method is hidden in ways that built-in functions like `dir()` explicitly omit. Nevertheless, we can see that it is in fact available to us by [injecting `{{''.__class__.__mro__[2].__subclasses__}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2].__subclasses__%7D%7D) (or [the equivalent `int`-type introspection code](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1.__class__.__mro__[1].__subclasses__%7D%7D)):
+
+```html
+[Errno 2] No such file or directory: u"<built-in method __subclasses__ of type object at 0x905b80>" 
+```
+
+Methods are an object's functions. When we call this method by [injecting `{{''.__class__.__mro__[2].__subclasses__()}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2].__subclasses__%28%29%7D%7D) (and in some cases, we need to use the percent-encoded equivalent of the open parentheses `(`, which is `%28`, and the close parenthesis `)`, which is `%29`, to do so), we are rewarded with [a long list available objects and classes](loot/http_zumbo-8ac445b1.ctf.bsidessf.net_%257B%257B''.__class__.__mro__[2].__subclasses__%2528%2529%257D%257D.html). Each item in this list represents some loaded Python code that we can execute by navigating through the maze of object references.
 
 # Tools
 
