@@ -366,6 +366,30 @@ The root object is most certainly outside of the Jinja template engine, meaning 
 
 Methods are an object's functions. When we call this method by [injecting `{{''.__class__.__mro__[2].__subclasses__()}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2].__subclasses__%28%29%7D%7D) (and in some cases, we need to use the percent-encoded equivalent of the open parentheses `(`, which is `%28`, and the close parenthesis `)`, which is `%29`, to do so), we are rewarded with [a long list available objects and classes](loot/http_zumbo-8ac445b1.ctf.bsidessf.net_%257B%257B''.__class__.__mro__[2].__subclasses__%2528%2529%257D%257D.html). Each item in this list represents some loaded Python code that we can execute by navigating through the maze of object references.
 
+Since Python can execute arbitrary commands using [the `system()` method of its `os` module](https://docs.python.org/2/library/os.html#os.system), one way of achieving remote code execution is to try to find a way to reference the `os` module from the root object. There are other ways to achieve a similar effect, such as finding a loaded [`file` object](https://docs.python.org/2/library/stdtypes.html#bltin-file-objects) and using [its `write()` method](https://docs.python.org/2/library/stdtypes.html#file.write) to write Python source code to a file on the server, which we later try to execute. However, if we can get a reference to the `os` module, we can just execute commands as though we were sitting at the server's command line, ourselves.
+
+There is *a lot* to look through here so, again, a bit of Internet sleuthing will drastically speed up your search. The following screenshot shows that a `file` object is readily accessible, and a path towards the `os` module is available from the loaded [`warnings` module](https://docs.python.org/2/library/warnings.html) in a couple different locations:
+
+![Screenshot of the root object's `__subclasses__()` special method output.](screenshots/zumbo-dot-com-ssti-root-object-subclasses-fullpage-annotated.png)
+
+Another approach, if no prior research was available to you, would be an exhaustive search using the Python interpreter in a local environment. For instance:
+
+```sh
+$ python
+Python 2.7.13 (default, Dec 23 2016, 05:05:58) 
+[GCC 4.2.1 Compatible Apple LLVM 7.0.2 (clang-700.1.81)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> dir()
+['__builtins__', '__doc__', '__name__', '__package__']
+>>> import warnings
+>>> dir(warnings)
+['WarningMessage', '_OptionError', '__all__', '__builtins__', '__doc__', '__file__', '__name__', '__package__', '_getaction', '_getcategory', '_processoptions', '_setoption', '_show_warning', 'catch_warnings', 'default_action', 'defaultaction', 'filters', 'filterwarnings', 'formatwarning', 'linecache', 'once_registry', 'onceregistry', 'resetwarnings', 'showwarning', 'simplefilter', 'sys', 'types', 'warn', 'warn_explicit', 'warnpy3k']
+```
+
+After `import`ing the Python standard library's `warnings` module, we can see both `WarningMessage` and `catch_warnings`, which were among the accessible object references on the target server. (We can see [their source code](https://hg.python.org/cpython/file/2.7/Lib/warnings.py), since Python is free software.) Exploring these further reveals a pathway towarsd the `os` module:
+
+:construction: TK-TODO
+
 # Tools
 
 Now that you understand more details of URL mapping, percent-encoding, path traversal attacks, and server-side template injection attacks, consider familiarizing yourself with the following tools to make this sort of work easier in the future.
