@@ -222,7 +222,7 @@ In this code, the value of the URL first becomes the value of the `page` variabl
 1. The next line that uses the `page` variable is inside the `try` block. In this case, the program will `open()` a file whose name is given by the URL, `read()` that file's contents, and assign the contents of that file to the `template` variable. This means we now have two variables to consider: `page` and `template`. Let's follow this code path more closely:
     1. The next line where `template` is used in this code path is the second to last one, where the now-familiar HTML comment is being appended to a new line: `template += "\n<!-- page: %s, src: %s -->\n" % (page, __file__)`.  
 
-      > :bulb: Careful readers will notice that this line also makes use of the `page` variable. The raw, unfiltered contents of `page` are inserted directly into an HTML comment, resulting in an [XSS attack](https://en.wikipedia.org/wiki/Cross-site_scripting). While potentially useful for other reasons, this does not help us pursue the third flag because XSS attacks are executed *locally*, in the client's Web browser, and we are trying to achieve *remote* code execution, in the server itself.  
+      > :bulb: Careful readers will notice that this line also makes use of the `page` variable. The raw, unfiltered contents of `page` are inserted directly into an HTML comment, resulting in an [XSS vulnerability](https://en.wikipedia.org/wiki/Cross-site_scripting). While potentially useful for other reasons, this does not help us pursue the third flag because XSS attacks are executed *locally*, in the client's Web browser, and we are trying to achieve *remote* code execution, in the server itself.  
 
       Moving on…
 
@@ -306,7 +306,7 @@ This is the stage of the challenge requiring an intimate understanding of Python
 
 Discussed in the previously linked article is an apparently magic incantation, `{{ ''.__class__.__mro__[2].__subclasses__() }}`, that reveals access to the Python execution environment outside of the Jinja template sandbox. Rather than gloss over this detail, let's take the time to at least shallowly dissect why this works.
 
-We already understand the `{{` and `}}` are Jinja expressions, so let's begin by chunking the expression itself and injecting one piece at a time. The first part is the empty string `''`. This is simply a Python string literal. [Injecting it (with a payload of `%7B%7B''%7D%7D`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''%7D%7D)) returns the familiar "No such file or directory" error, but with zero content:
+We already understand the `{{` and `}}` are Jinja expression delimeters, so let's begin by chunking the expression itself and injecting one piece at a time. The first part is the empty string `''`. This is simply a Python string literal. [Injecting it (with a payload of `%7B%7B''%7D%7D`](http://zumbo-8ac445b1.ctf.bsidessf.net/%7B%7B''%7D%7D)) returns the familiar "No such file or directory" error, but with zero content:
 
 ```html
 [Errno 2] No such file or directory: u""
