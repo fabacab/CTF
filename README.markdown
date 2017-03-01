@@ -22,6 +22,7 @@ This repository is structured in a manner optimized for learning from CTF writeu
         * *Challenge category*
             * *Challenge name*
                 * `README.md` file containing the writeup itself
+                * `assets/` folder containing any material needed to complete the challenge acquired elsewhere.
                 * `attachments/` folder containing any downloadable attachments given in the challenge clue.
+                * `loot/` folder containing any assets acquired from the challenge itself.
                 * `screenshots/` folder containing any screenshots taken during the challenge and used in the writeup.
-                * `loot/` folder containing any assets acquired during the challenge itself.
