@@ -129,7 +129,7 @@ In the above example, two inputs of different length are provided. The first inp
 
 Taken at face value, this is a daunting task. At the time of this writing, contemporary consumer-grade computers are simply not fast enough to search that many possibilities for two inputs whose outputs are both the same resulting value when run through the SHA-1 algorithm. A cluster of supercomputers could probably do it in some amount of time, but even they might need much more time than the duration of the Capture The Flag game (which only lasts a mere 48 hours), meaning that a brute-force search is impractical, at least with respect to acquiring the flag from this challenge. We have to use some *much* faster way to find a hash collision in the SHA-1 algorithm.
 
-The fastest way to do this, of course, is to ask the Internet if anyone else has *already* done this. A simple Internet search for [`SHA-1 hash collision`](https://duckduckgo.com/?q=sha-1 hash collision) turns up numerous hits. Indeed, [a SHA-1 hash collision *has* been found and published](https://security.googleblog.com/2017/02/announcing-first-sha1-collision.html). On February 23<sup>rd</sup>, 2017, Google published a post stating:
+The fastest way to do this, of course, is to ask the Internet if anyone else has *already* done this. A simple Internet search for [`SHA-1 hash collision`](https://duckduckgo.com/?q=sha-1%20hash%20collision) turns up numerous hits. Indeed, [a SHA-1 hash collision *has* been found and published](https://security.googleblog.com/2017/02/announcing-first-sha1-collision.html). On February 23<sup>rd</sup>, 2017, Google published a post stating:
 
 > we are [releasing two PDFs](https://shattered.it/) that have identical SHA-1 hashes but different content.
 
