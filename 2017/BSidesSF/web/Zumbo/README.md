@@ -252,10 +252,10 @@ The Jinja documentation isn't quite so plainly worded about how to do this, but 
 
 > The default Jinja delimiters are configured as follows:
 > 
-> * {% ... %} for [Statements](http://jinja.pocoo.org/docs/2.9/templates/#list-of-control-structures)
-> * {{ ... }} for [Expressions](http://jinja.pocoo.org/docs/2.9/templates/#expressions) to print to the template output
-> * {# ... #} for [Comments](http://jinja.pocoo.org/docs/2.9/templates/#comments) not included in the template output
-> * #  ... ## for [Line Statements](http://jinja.pocoo.org/docs/2.9/templates/#line-statements)
+> * `{% ... %}` for [Statements](http://jinja.pocoo.org/docs/2.9/templates/#list-of-control-structures)
+> * `{{ ... }}` for [Expressions](http://jinja.pocoo.org/docs/2.9/templates/#expressions) to print to the template output
+> * `{# ... #}` for [Comments](http://jinja.pocoo.org/docs/2.9/templates/#comments) not included in the template output
+> * `#  ... ##` for [Line Statements](http://jinja.pocoo.org/docs/2.9/templates/#line-statements)
 
 Recall that our objective is to write a string that is both not a file name and is also a Python expression that will be evaluated by the Jinja template renderer. The only item in this list that directly matches what we need is the second, Jinja expressions. The Jinja documentation describes expressions as "work[ing] very similarly to regular Python." Jinja's expressions are delimeted by a double brace on each side, meaning our URL will have to start with `{{` and end with `}}`. The percent-encoded sequence for an opening brace (`{`) is `%7B` and the percent-encoded sequence for a closing brace is `%7D`, so we'll ultimately need to craft a URL payload such as `%7B%7B<PAYLOAD-HERE>%7D%7D`, with `<PAYLOAD-HERE>` replaced with the actual Python code we want executed.
 
@@ -275,7 +275,7 @@ Having discovered a server-side template injection vector, our next step is to e
 
 Of course, none of the built-in Jinja functions and neither of the developer-supplied variables present an obvious path towards remote code execution. After all, one of the primary purpsoes of templates is to restrict what code can be run in the first place. This general concept is called a "[sandbox](https://en.wikipedia.org/wiki/Sandbox_(computer_security))." In order to achieve remote code exceution, we need to find a way to get out of Jinja's sandboxed environment.
 
-This is the stage of the challenge requiring an intimate understanding of Python. Thankfully, even if you don't have such knowledge, there's plenty of prior research available to anyone who can imagine some relevant Internet search keywords. Two obvious searches might be [`flask jinja template injection`](https://duckduckgo.com/?q=flask jinja template injection) and [`server-side template injection jinja`](https://duckduckgo.com/?q=server-side template injection jinja), both of which turn up a wealth of information, including a particularly useful blog post titled "[Exploring SSTI in Flask/Jinja2, Part II](https://nvisium.com/blog/2016/03/11/exploring-ssti-in-flask-jinja2-part-ii/)."
+This is the stage of the challenge requiring an intimate understanding of Python. Thankfully, even if you don't have such knowledge, there's plenty of prior research available to anyone who can imagine some relevant Internet search keywords. Two obvious searches might be [`flask jinja template injection`](https://duckduckgo.com/?q=flask%20jinja%20template%20injection) and [`server-side template injection jinja`](https://duckduckgo.com/?q=server-side%20template%20injection%20jinja), both of which turn up a wealth of information, including a particularly useful blog post titled "[Exploring SSTI in Flask/Jinja2, Part II](https://nvisium.com/blog/2016/03/11/exploring-ssti-in-flask-jinja2-part-ii/)."
 
 > :beginner: Even if no prior research was findable by searching the Internet, however, the general methodology you would use is the same: read the documentation for the tools you're using, play with the tools yourself, explore their running environment, and so on, focusing on areas that seem particularly promising. Yes, much of this intuition comes with experience.
 > 
