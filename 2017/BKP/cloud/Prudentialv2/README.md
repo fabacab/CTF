@@ -100,7 +100,7 @@ The next conditional is of primary interest because it is clearly dealing with t
     }
 ```
 
-Here we see another PHP function used twice: [the `sha1()` function](https://php.net/sha1). The documentation says this function is used to "calculate the sha1 hash of a string." If the result of this function applied to the `$name` variable is *identical* (because of the triple-equals, `===`, meaning not merely "equal" but identical) to the result of this same function applied to the `$password` variable, then the code will [`die()`](https://php.net/die), which exits the script while outputing the given message. In this case, the message is the flag.
+Here we see another PHP function used twice: [the `sha1()` function](https://php.net/sha1). The documentation says this function is used to "calculate the sha1 hash of a string." If the result of this function applied to the `$name` variable is *identical* (because of [the triple-equals, `===`, meaning not merely "equal" value but identical](https://secure.php.net/manual/en/language.operators.comparison.php) in both value and variable type) to the result of this same function applied to the `$password` variable, then the code will [`die()`](https://php.net/die), which exits the script while outputing the given message. In this case, the message is the flag.
 
 So we now know that our challenge is to provide input through the login form that meets the following criteria:
 
