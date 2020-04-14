@@ -219,7 +219,7 @@ $ xxd -l 150 shattered-1.pdf
 0000090: 7265 616d 0aff                           ream..
 ```
 
-Here we can see the binary values of the PDF data itself. It begins, [as all PDF files do](http://resources.infosecinstitute.com/pdf-file-format-basic-structure/), with a header that declares the version number of the PDF file format the rest of the document conforms to. In this case, it's `%PDF-1.3`, which we can see in the far right column of `xxd`'s output. Notice that as before, this right-most column simply represnts the *same* data as the middle set of columns, but converted into ASCII. We can again prove this to ourselves by taking the very first character of the PDF header (which in this case is an ASCII `%`) and running it through `xxd` as before:
+Here we can see the binary values of the PDF data itself. It begins, [as all PDF files do](http://resources.infosecinstitute.com/pdf-file-format-basic-structure/), with a header that declares the version number of the PDF file format the rest of the document conforms to. In this case, it's `%PDF-1.3`, which we can see in the far right column of `xxd`'s output. Notice that as before, this right-most column simply represents the *same* data as the middle set of columns, but converted into ASCII. We can again prove this to ourselves by taking the very first character of the PDF header (which in this case is an ASCII `%`) and running it through `xxd` as before:
 
 ```sh
 $ echo -n '%' | xxd
@@ -232,6 +232,8 @@ Sure enough, the hexadecimal value `0x25` maps to an ASCII `%`. We can do the sa
 $ echo -n 'P' | xxd
 0000000: 50                                       P
 ```
+
+> :beginner: On many systems, the `ascii(7)` manual page will also be available, which provides a reference for all the ASCII character codes.
 
 So an ASCII `%` is hexadecimal `25` and an ASCII `P` is hexadecimal `50`. These two bytes are the first bytes in every PDF file. Converting this hexdump into a URL's percent-encoded string is now relatively straightforward: we simply insert a `%` character between every two hex numbers in the middle set of columns and remove the spaces. That is to say, the first group of digits, which is hexadecimal `2550`, becomes `%25%50` in a URL, and so on down the line.
 
@@ -279,7 +281,7 @@ Thankfully, this error is extremely clear: the URL was too long ([a "URI" is a s
 
 In §2 of [their paper](https://shattered.it/static/shattered.pdf), headlined "Our contributions," the authors describe their work as "an *identical-prefix collision attack*, where a given prefix *P* is extended with two distinct *near-collision block pairs* such that they collide for any suffix *S*." An "identical-prefix collision attack" simply means two input values that *start with* identical data. (It is a form of [chosen-prefix collision attack](https://blog.cloudflare.com/why-its-harder-to-forge-a-sha-1-certificate-than-it-is-to-find-a-sha-1-collision/#chosenprefixattacks).) "Two distinct near-collision block pairs" simply means that two different values are then appended to this identical prefix. Finally, "such that they collide for any suffix" means that any follow-on data appended to these now different byte sequences will produce the same hash, *regardless of the rest of this appended data*. In other words, we don't need to use the full PDF files. We just need some amount of data from the *start* of both files. Specifically, we need the identical prefix and the near-collision block pairs. We can discard the suffix because it will have zero effect on the hashed output.
 
-How much data from the start of the PDFs do we need? This, too, is answered by their paper. Page 4 of their paper prominently features a hexdump called "Table 2" and is helpfully labelled "Identical prefix of our collision." The hexdump they show is the first 192 bytes of each PDF. We can inspect the first 192 bytes ourselves to confirm that they are indeed identitcal across the two files:
+How much data from the start of the PDFs do we need? This, too, is answered by their paper. Page 4 of their paper prominently features a hexdump called "Table 2" and is helpfully labelled "Identical prefix of our collision." The hexdump they show is the first 192 bytes of each PDF. We can inspect the first 192 bytes ourselves to confirm that they are indeed identical across the two files:
 
 ```sh
 xxd -l 192 shattered-1.pdf > 1-pdf.192 # save a hexdump from the first PDF to the file 1-pdf.192
